@@ -19,6 +19,7 @@ class ClientThread(threading.Thread):
         global status
         global tiles
         global current_player
+        global isStarted
 
         print ("Connection from : ", self.caddress)
         #self.csocket.send(bytes("Hi, This is from Server..",'utf-8'))
@@ -30,33 +31,36 @@ class ClientThread(threading.Thread):
         while True:
             data = self.csocket.recv(2048)
             msg = data.decode()
-            if msg=='bye':
-              break
             print ("from player {}:".format(self.player), msg)
-            if current_player == self.player:
-                pos = msg.split()
-                tiles[int(pos[0])][int(pos[1])] = str(self.symbol)
-                #text = text + " (from {no}: {msg})".format(no=self.player, msg = msg)
-                for c in clients.keys():
-                    clients[c].sendBoard()
-                
-                if check_win() == 1:
+            if isStarted:
+                if current_player == self.player:
+                    pos = msg.split()
+                    tiles[int(pos[0])][int(pos[1])] = str(self.symbol)
+                    #text = text + " (from {no}: {msg})".format(no=self.player, msg = msg)
                     for c in clients.keys():
-                        clients[c].sendMessage('player 1 win')
-                elif check_win() == 2:
-                    for c in clients.keys():
-                        clients[c].sendMessage('player 2 win')
-                elif check_win() == 0:
-                    for c in clients.keys():
-                        clients[c].sendMessage('draw')
+                        clients[c].sendBoard()
+                    
+                    if check_win() == 1:
+                        for c in clients.keys():
+                            clients[c].sendMessage('player 1 win')
+                        isStarted = False
+                    elif check_win() == 2:
+                        for c in clients.keys():
+                            clients[c].sendMessage('player 2 win')
+                        isStarted = False
+                    elif check_win() == 0:
+                        for c in clients.keys():
+                            clients[c].sendMessage('draw')
+                        isStarted = False
 
-                if current_player == 1:
-                    current_player = 2
+                    if current_player == 1:
+                        current_player = 2
+                    else:
+                        current_player = 1
                 else:
-                    current_player = 1
+                    self.sendMessage('not your turn!')
             else:
-                self.sendMessage('not your turn!')
-
+                self.sendMessage('game not started!')
         self.csocket.close()
         print ("Client at ", self.caddress , " disconnected...")
 
@@ -89,6 +93,8 @@ player_no = 1
 clients = dict()
 
 current_player = 1
+isStarted = False
+roundN = 1
 
 tiles = list()
 def init_tiles():
@@ -96,7 +102,9 @@ def init_tiles():
     tiles = [[' ', ' ', ' '],[' ', ' ', ' '],[' ', ' ', ' ']]
   
 def playGame():
+    global isStarted
     init_tiles()
+    isStarted = True
 
 def check_win():
     i = 0
@@ -126,5 +134,5 @@ while player_no <= 2:
     player_no = player_no + 1
 
 playGame()
-status = "player found"
+status = "player-found_{r}_{s}".format(r=roundN, s=1)
 
